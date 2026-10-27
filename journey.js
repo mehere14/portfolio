@@ -7,13 +7,16 @@
   document.querySelectorAll('.journey').forEach(function (sec) {
     var steps = [].slice.call(sec.querySelectorAll('.j-step'));
     var n = steps.length, cur = -1;
-    var rail = sec.querySelector('.j-rail'), fill = sec.querySelector('.j-fill'), label = sec.querySelector('.j-label');
+    var rail = sec.querySelector('.j-rail'), fill = sec.querySelector('.j-fill');
     sec.style.setProperty('--n', n);
 
     var dots = steps.map(function (s, i) {
       var b = document.createElement('button');
       b.type = 'button';
       b.setAttribute('aria-label', 'Step ' + (i + 1) + ': ' + s.dataset.label);
+      // Every checkpoint is labelled; labels alternate above and below the line so they never collide.
+      b.innerHTML = '<i class="j-dot"></i><span class="j-tag ' + (i % 2 ? 'down' : 'up') + '" aria-hidden="true"></span>';
+      b.lastChild.textContent = s.dataset.label;
       b.addEventListener('click', function () { jump(i); });
       rail.appendChild(b);
       return b;
@@ -29,11 +32,7 @@
         d.classList.toggle('done', j < i);
         if (j === i) d.setAttribute('aria-current', 'step'); else d.removeAttribute('aria-current');
       });
-      var pct = (i / (n - 1)) * 100;
-      fill.style.width = pct + '%';
-      label.style.left = pct + '%';
-      label.style.transform = 'translateX(-' + pct + '%)';
-      label.textContent = steps[i].dataset.label;
+      fill.style.width = (i / (n - 1)) * 100 + '%';
     }
 
     function progress() {
