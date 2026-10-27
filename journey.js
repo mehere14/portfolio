@@ -24,10 +24,27 @@
 
     function pinned() { return sec.classList.contains('is-pinned'); }
 
+    // A step can hold a muted video clip; it loads only while that step is showing.
+    function clip(step, on) {
+      var box = step.querySelector('[data-yt]');
+      if (!box) return;
+      var frame = box.querySelector('iframe');
+      if (on && !frame && !calm.matches) {
+        frame = document.createElement('iframe');
+        frame.src = 'https://www.youtube-nocookie.com/embed/' + box.dataset.yt +
+          '?autoplay=1&mute=1&playsinline=1&controls=0&rel=0&start=' + box.dataset.start + '&end=' + box.dataset.end;
+        frame.allow = 'autoplay; encrypted-media; picture-in-picture';
+        frame.title = box.querySelector('a').getAttribute('aria-label');
+        box.appendChild(frame);
+      } else if (!on && frame) {
+        frame.remove();
+      }
+    }
+
     function show(i) {
       if (i === cur) return;
       cur = i;
-      steps.forEach(function (s, j) { s.classList.toggle('is-on', j === i); });
+      steps.forEach(function (s, j) { s.classList.toggle('is-on', j === i); clip(s, j === i); });
       dots.forEach(function (d, j) {
         d.classList.toggle('done', j < i);
         if (j === i) d.setAttribute('aria-current', 'step'); else d.removeAttribute('aria-current');
@@ -49,7 +66,9 @@
 
     var seen = new IntersectionObserver(function (entries) {
       entries.forEach(function (e) {
-        if (e.isIntersecting && !pinned()) e.target.classList.add('is-on');
+        if (pinned()) return;
+        if (e.isIntersecting) e.target.classList.add('is-on');
+        clip(e.target, e.isIntersecting);
       });
     }, { threshold: 0.35 });
 
@@ -57,6 +76,7 @@
       sec.classList.toggle('is-pinned', wide.matches);
       sec.classList.toggle('anim', !calm.matches);
       cur = -1;
+      steps.forEach(function (s) { clip(s, false); });
       if (wide.matches) {
         show(progress());
       } else {
