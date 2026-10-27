@@ -67,7 +67,7 @@
       return b;
     });
 
-    // Arrows sit over the neighbouring cards that peek in from either side.
+    // Arrows sit on the edges of the live card, next to the neighbours peeking in from the margins.
     var view = document.createElement('div');
     view.className = 'j-view';
     list.before(view);
@@ -85,13 +85,10 @@
     prev.addEventListener('click', function () { go(cur - 1); });
     next.addEventListener('click', function () { go(cur + 1); });
 
-    // Matches the snap alignment: first card at the start, last at the end, the rest centred.
+    // Matches the snap alignment: every card centres in the column.
     function go(i) {
-      i = Math.max(0, Math.min(n - 1, i));
-      var card = steps[i], left;
-      if (i === 0) left = 0;
-      else if (i === n - 1) left = list.scrollWidth - list.clientWidth;
-      else left = card.offsetLeft - (list.clientWidth - card.offsetWidth) / 2;
+      var card = steps[Math.max(0, Math.min(n - 1, i))];
+      var left = card.offsetLeft - (list.clientWidth - card.offsetWidth) / 2;
       list.scrollTo({ left: left, behavior: calm.matches ? 'auto' : 'smooth' });
     }
 
