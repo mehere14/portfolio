@@ -4,6 +4,24 @@
   var wide = matchMedia('(min-width: 900px) and (min-height: 640px)');
   var calm = matchMedia('(prefers-reduced-motion: reduce)');
 
+  function send(frame, msg) {
+    if (frame.contentWindow) frame.contentWindow.postMessage(JSON.stringify(msg), '*');
+  }
+
+  // When a clip reaches its end time, jump back to its start and keep playing.
+  addEventListener('message', function (e) {
+    if (!/^https:\/\/www\.youtube(-nocookie)?\.com$/.test(e.origin)) return;
+    var data;
+    try { data = JSON.parse(e.data); } catch (err) { return; }
+    var state = data.event === 'onStateChange' ? data.info : data.info && data.info.playerState;
+    if (state !== 0) return;
+    document.querySelectorAll('[data-yt] iframe').forEach(function (frame) {
+      if (frame.contentWindow !== e.source) return;
+      send(frame, { event: 'command', func: 'seekTo', args: [+frame.parentNode.dataset.start, true] });
+      send(frame, { event: 'command', func: 'playVideo', args: [] });
+    });
+  });
+
   document.querySelectorAll('.journey').forEach(function (sec) {
     var steps = [].slice.call(sec.querySelectorAll('.j-step'));
     var n = steps.length, cur = -1;
@@ -24,7 +42,8 @@
 
     function pinned() { return sec.classList.contains('is-pinned'); }
 
-    // A step can hold a muted video clip; it loads only while that step is showing.
+    // A step can hold a muted video clip; it loads only while that step is showing,
+    // and loops between data-start and data-end instead of reaching YouTube's end screen.
     function clip(step, on) {
       var box = step.querySelector('[data-yt]');
       if (!box) return;
@@ -32,11 +51,16 @@
       if (on && !frame && !calm.matches) {
         frame = document.createElement('iframe');
         frame.src = 'https://www.youtube-nocookie.com/embed/' + box.dataset.yt +
-          '?autoplay=1&mute=1&playsinline=1&controls=0&rel=0&start=' + box.dataset.start + '&end=' + box.dataset.end;
+          '?autoplay=1&mute=1&playsinline=1&controls=0&rel=0&iv_load_policy=3&fs=0&disablekb=1&enablejsapi=1' +
+          '&start=' + box.dataset.start + '&end=' + box.dataset.end + '&origin=' + encodeURIComponent(location.origin);
         frame.allow = 'autoplay; encrypted-media; picture-in-picture';
         frame.title = box.querySelector('a').getAttribute('aria-label');
+        frame.tabIndex = -1;
+        frame.addEventListener('load', function () { send(frame, { event: 'listening' }); });
         box.appendChild(frame);
+        box.classList.add('is-playing');
       } else if (!on && frame) {
+        box.classList.remove('is-playing');
         frame.remove();
       }
     }
